@@ -2,13 +2,13 @@
 import sys
 
 paths = [
-    r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\build.ps1',
-    r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\build-ascii.ps1',
-    r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\fetch-juce.ps1',
-    r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\install-vst3.ps1',
-    r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\setup.ps1',
-    r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\sync-assets.ps1',
-    r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\selfcheck.py',
+    r'E:\BK_EQ_Hybrid_v2\tools\build.ps1',
+    r'E:\BK_EQ_Hybrid_v2\tools\build-ascii.ps1',
+    r'E:\BK_EQ_Hybrid_v2\tools\fetch-juce.ps1',
+    r'E:\BK_EQ_Hybrid_v2\tools\install-vst3.ps1',
+    r'E:\BK_EQ_Hybrid_v2\tools\setup.ps1',
+    r'E:\BK_EQ_Hybrid_v2\tools\sync-assets.ps1',
+    r'E:\BK_EQ_Hybrid_v2\tools\selfcheck.py',
     r'E:\个人EQ项目\tools\check-repo-hygiene.ps1',
     r'E:\个人EQ项目\tools\install-vst3.ps1',
 ]

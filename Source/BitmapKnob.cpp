@@ -72,15 +72,25 @@ void BitmapKnob::paint (juce::Graphics& g)
 
         juce::Graphics::ScopedSaveState saved (g);
 
-        // 以控件中心为轴心旋转，然后把帧的中心对齐到该轴心
-        g.addTransform (juce::AffineTransform::translation (bounds.getCentreX(), bounds.getCentreY()));
-        g.addTransform (juce::AffineTransform::rotation (juce::degreesToRadians (angleDegrees)));
-        g.addTransform (juce::AffineTransform::scale (scale));
-        g.addTransform (juce::AffineTransform::translation (-slice.getWidth()  * 0.5f,
-                                                            -slice.getHeight() * 0.5f));
+        // 把该帧画到「以控件中心为轴心、边长 = rect」的位置。
+        //
+        // 用 drawImageTransformed 而不是 g.addTransform + g.drawImage：
+        //  - drawImage 的 (targetArea, placement) 重载只能整图缩放，无法切帧
+        //  - JUCE 也没有 (destRect, srcRect) 这个重载
+        // 因此把「切帧 + 缩放 + 旋转 + 定位」一次写进一个仿射变换：
+        //   1) 平移，使该帧中心落到局部原点
+        //   2) 按 rect/contentBox 缩放
+        //   3) 以原点为轴心旋转
+        //   4) 平移到控件中心
+        const auto frameCentre = slice.getCentre().toFloat();
 
-        g.drawImage (filmstrip, slice.toFloat(),
-                     juce::RectanglePlacement::stretchToFit, false);
+        const auto transform =
+            juce::AffineTransform::translation (-frameCentre.x, -frameCentre.y)
+                .scaled (scale)
+                .rotated (juce::degreesToRadians (angleDegrees))
+                .translated (bounds.getCentreX(), bounds.getCentreY());
+
+        g.drawImageTransformed (filmstrip, transform);
     }
 
     // --- 对齐核对用的辅助标记（POC 阶段开启） --------------------------------

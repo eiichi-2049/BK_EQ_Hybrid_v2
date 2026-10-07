@@ -38,6 +38,7 @@ private:
 
     void buildKnobs();
     void buildZoomButton();
+    void showZoomMenu();
     void layOutKnobs();
     void applyZoomLevel();
 
@@ -49,7 +50,27 @@ private:
     juce::OwnedArray<BitmapKnob> knobs;
     std::vector<std::unique_ptr<Attachment>> attachments;
 
-    juce::TextButton zoomButton;                             // 右下角：点击循环档位
+    /** 简单图片盒：把一张素材按底图坐标摆放。用于中央 VU 表盘等背景元素。 */
+    class ImageBox : public juce::Component
+    {
+    public:
+        explicit ImageBox (juce::Image img) : image (std::move (img)) {}
+
+        void paint (juce::Graphics& g) override
+        {
+            if (image.isValid())
+                g.drawImage (image, getLocalBounds().toFloat(),
+                             juce::RectanglePlacement::stretchToFit, false);
+        }
+
+    private:
+        juce::Image image;
+    };
+
+    std::unique_ptr<ImageBox> vuBox;                         // 中央 VU 表盘
+    juce::Rectangle<int> vuDesignArea;                       // VU 在底图坐标系里的位置
+
+    juce::TextButton zoomButton;                             // 右下角：点击弹出档位菜单
     int zoomIndex = kDefaultZoomIndex;
 
     /** TextButton 没有公开的 setFont，字号由 LookAndFeel 决定，故自带一个。 */

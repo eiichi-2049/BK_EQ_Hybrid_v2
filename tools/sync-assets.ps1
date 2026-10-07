@@ -25,7 +25,7 @@ $root     = Split-Path -Parent $PSScriptRoot
 $assetDir = Join-Path $root 'assets'
 
 if (-not $Source) {
-    $Source = Join-Path $root '..\AnalogBlend\Images'
+    $Source = 'E:\个人EQ项目\编码\AnalogBlend\Images'
 }
 
 Write-Host '== 同步 UI 素材 ==' -ForegroundColor Cyan
@@ -50,7 +50,8 @@ $wanted = @(
     'fs_red.png',       # SSL 红钮
     'fs_green.png',     # SSL 绿钮
     'fs_blue.png',      # SSL 蓝钮
-    'fs_brown.png'      # SSL 棕钮
+    'fs_brown.png',     # SSL 棕钮
+    'vu_meter.png'      # 中央 VU 表盘
 )
 
 $copied = 0

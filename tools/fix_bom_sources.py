@@ -1,4 +1,4 @@
-"""给 v2 的 C++ 源码加 UTF-8 BOM。
+﻿"""给 v2 的 C++ 源码加 UTF-8 BOM。
 
 原因：MSVC 在中文 Windows 上默认按代码页 936 解析无 BOM 的 UTF-8 文件，
 源码里的中文注释会被误读，进而产生大量离奇语法错误
@@ -7,7 +7,7 @@
 import os
 
 ROOTS = [
-    r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\Source',
+    r'E:\BK_EQ_Hybrid_v2\Source',
 ]
 
 count = 0

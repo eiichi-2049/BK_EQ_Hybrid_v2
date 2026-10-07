@@ -54,6 +54,16 @@ BK_EQ_HybridAudioProcessorEditor::BK_EQ_HybridAudioProcessorEditor (BK_EQ_Hybrid
 {
     background = AssetLoader::loadImage ("bg.png");
 
+    // 中央 VU 表盘：位置取 v1 工程里的面板坐标 (524,163) 268×172。
+    // 目前是静态贴图；正式版的表针会跟随真实信号（v1 已做过，见 docs/spec）。
+    constexpr int kVuX = 524, kVuY = 163, kVuW = 268, kVuH = 172;
+    vuDesignArea = { kVuX, kVuY, kVuW, kVuH };
+    if (auto vuImage = AssetLoader::loadImage ("vu_meter.png"); vuImage.isValid())
+    {
+        vuBox = std::make_unique<ImageBox> (vuImage);
+        addAndMakeVisible (*vuBox);
+    }
+
     buildKnobs();
     buildZoomButton();
 
@@ -110,12 +120,41 @@ void BK_EQ_HybridAudioProcessorEditor::buildKnobs()
 
 void BK_EQ_HybridAudioProcessorEditor::buildZoomButton()
 {
-    // 右下角：点击循环缩放档位，随档位一起缩放
+    // 右下角：点击弹出档位菜单，随档位一起缩放
     zoomButton.setButtonText ("100%");
-    zoomButton.setTooltip ("点击切换缩放档位：60 / 80 / 100 / 120 / 140%");
+    zoomButton.setTooltip ("选择缩放档位");
     zoomButton.setLookAndFeel (&zoomLookAndFeel);
-    zoomButton.onClick = [this] { zoomIn(); };
+    zoomButton.onClick = [this] { showZoomMenu(); };
     addAndMakeVisible (zoomButton);
+}
+
+void BK_EQ_HybridAudioProcessorEditor::showZoomMenu()
+{
+    // 弹出二级菜单让用户选择档位。
+    // 不用「点击即循环」是因为档位只有 5 个，直接列出比反复点击直观得多。
+    juce::PopupMenu menu;
+    menu.setLookAndFeel (&zoomLookAndFeel);
+
+    for (int i = 0; i < (int) kZoomLevels.size(); ++i)
+    {
+        const auto percent = juce::roundToInt (kZoomLevels[(size_t) i] * 100.0);
+        menu.addItem (i + 1,
+                      juce::String (percent) + "%",
+                      true,                       // enabled
+                      i == zoomIndex);            // 当前档位打勾
+    }
+
+    menu.showMenuAsync (juce::PopupMenu::Options()
+                            .withTargetComponent (&zoomButton)
+                            .withMinimumWidth (zoomButton.getWidth()),
+                        [this] (int result)
+                        {
+                            if (result > 0 && result <= (int) kZoomLevels.size())
+                            {
+                                zoomIndex = result - 1;
+                                applyZoomLevel();
+                            }
+                        });
 }
 
 void BK_EQ_HybridAudioProcessorEditor::zoomIn()
@@ -175,6 +214,18 @@ void BK_EQ_HybridAudioProcessorEditor::resized()
         backgroundArea = area;
 
     layOutKnobs();
+
+    // VU 表盘随底图坐标系摆放
+    if (vuBox != nullptr)
+    {
+        const auto vx = (float) backgroundArea.getWidth()  / (float) kDesignWidth;
+        const auto vy = (float) backgroundArea.getHeight() / (float) kDesignHeight;
+
+        vuBox->setBounds (backgroundArea.getX() + juce::roundToInt (vuDesignArea.getX() * vx),
+                          backgroundArea.getY() + juce::roundToInt (vuDesignArea.getY() * vy),
+                          juce::jmax (1, juce::roundToInt (vuDesignArea.getWidth()  * vx)),
+                          juce::jmax (1, juce::roundToInt (vuDesignArea.getHeight() * vy)));
+    }
 
     const auto scale = kZoomLevels[(size_t) zoomIndex];
     const int bw = juce::roundToInt (78 * scale);
