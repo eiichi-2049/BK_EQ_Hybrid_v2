@@ -27,37 +27,41 @@ namespace
     // ------------------------------------------------------------------------
     // 坐标表（底图坐标系 1280×720）—— 来源：MAIN-UI-UNDERLAY 实测
     //
-    //  左 Pultec：三行标签中心实测 y≈118 / 300 / 485，白色定位点在 y≈150 /
-    //    332 / 515（旋钮圆上缘）。列中心 x≈140 / 272（大钮），400（频选小钮）。
-    //  右 SSL：底图上 4 个白色定位圈，实测中心 (874,342) (1012,558)
-    //    (1011,771) (873,1008)，直径约 100。
+    //  左 Pultec：底图只有文字标签 + 白色定位点。已能检出定位点的三个钮实测质心：
+    //      R1-1 BOOST (136.1,164.5)   R1-3 频选 (401.1,172.1)   R3-3 频选 (401.0,542.1)
+    //    定位点半径均约 38（即旋钮可见圆半径）。由此得网格：
+    //      列中心 x ≈ 128 / 263 / 400（间距约 135）
+    //      行中心 y ≈ 170 / 355 / 540（间距 185，与 SSL 行距一致）
+    //    其余钮的点太稀疏无法检出，按同一网格推得。
+    //  右 SSL：底图上有 10 个灰色实心定位圆（直径 83.2），实测中心为
+    //      (873,192) (1149,192) ／ (873,314) (1012,314) (1149,314)
+    //      (873,434) (1012,434) (1149,434) ／ (873,567) (1150,567)
     //
-    // ⚠ 这些坐标需要在插件里目视复核。若整体偏移，改这里的数字即可
-    //   （见 DEVELOPMENT.md「坐标标定」）。
+    // ⚠ 若整体仍有偏移，直接改这里的数字即可（见 DEVELOPMENT.md「坐标标定」）。
     // ------------------------------------------------------------------------
     const KnobPlacement placements[] =
     {
         // ---------------------------- 左 Pultec（8 钮）
-        { BK_EQ_HybridAudioProcessor::kPultecBoost,    kPultecStrip, 140, 208, 100 },  // R1 BOOST
-        { BK_EQ_HybridAudioProcessor::kPultecBw,       kPultecStrip, 272, 208, 100 },  // R1 BD.WITH
-        { BK_EQ_HybridAudioProcessor::kPultecHfSel,    kPultecStrip, 400, 208,  78 },  // R1 3/5/10/16k
-        { BK_EQ_HybridAudioProcessor::kPultecAtten,    kPultecStrip, 140, 390, 100 },  // R2 ATTEN.
-        { BK_EQ_HybridAudioProcessor::kPultecAttenSel, kPultecStrip, 272, 390, 100 },  // R2 ATTEN.SEL
-        { BK_EQ_HybridAudioProcessor::kPultecAtten2,   kPultecStrip, 140, 573, 100 },  // R3 ATTEN.
-        { BK_EQ_HybridAudioProcessor::kPultecBoost2,   kPultecStrip, 272, 573, 100 },  // R3 BOOST
-        { BK_EQ_HybridAudioProcessor::kPultecLfSel,    kPultecStrip, 400, 573,  78 },  // R3 20/30/60/100
+        { BK_EQ_HybridAudioProcessor::kPultecBoost,    kPultecStrip, 128, 170, 100 },  // R1 BOOST
+        { BK_EQ_HybridAudioProcessor::kPultecBw,       kPultecStrip, 263, 170, 100 },  // R1 BD.WITH
+        { BK_EQ_HybridAudioProcessor::kPultecHfSel,    kPultecStrip, 401, 172,  84 },  // R1 3/5/10/16k
+        { BK_EQ_HybridAudioProcessor::kPultecAtten,    kPultecStrip, 128, 355, 100 },  // R2 ATTEN.
+        { BK_EQ_HybridAudioProcessor::kPultecAttenSel, kPultecStrip, 263, 355, 100 },  // R2 ATTEN.SEL
+        { BK_EQ_HybridAudioProcessor::kPultecAtten2,   kPultecStrip, 128, 540, 100 },  // R3 ATTEN.
+        { BK_EQ_HybridAudioProcessor::kPultecBoost2,   kPultecStrip, 263, 540, 100 },  // R3 BOOST
+        { BK_EQ_HybridAudioProcessor::kPultecLfSel,    kPultecStrip, 401, 542,  84 },  // R3 20/30/60/100
 
-        // ---------------------------- 右 SSL（10 钮）
-        { BK_EQ_HybridAudioProcessor::kSslHfDb,  kRedStrip,   874, 342, 100 },  // HF dB
-        { BK_EQ_HybridAudioProcessor::kSslHfHz,  kRedStrip,  1012, 342, 100 },  // HF Hz
-        { BK_EQ_HybridAudioProcessor::kSslHmfDb, kGreenStrip, 874, 559, 100 },  // HMF dB
-        { BK_EQ_HybridAudioProcessor::kSslHmfQ,  kGreenStrip,1012, 559, 100 },  // HMF Q
-        { BK_EQ_HybridAudioProcessor::kSslHmfHz, kGreenStrip,1150, 559, 100 },  // HMF Hz
-        { BK_EQ_HybridAudioProcessor::kSslLmfDb, kBlueStrip,  873, 772, 100 },  // LMF dB
-        { BK_EQ_HybridAudioProcessor::kSslLmfQ,  kBlueStrip, 1011, 772, 100 },  // LMF Q
-        { BK_EQ_HybridAudioProcessor::kSslLmfHz, kBlueStrip, 1149, 772, 100 },  // LMF Hz
-        { BK_EQ_HybridAudioProcessor::kSslLfDb,  kBrownStrip, 873, 1008, 100 }, // LF dB
-        { BK_EQ_HybridAudioProcessor::kSslLfHz,  kBrownStrip,1148, 1008, 100 }, // LF Hz
+        // ---------------------------- 右 SSL（10 钮，中心即灰色定位圆位置）
+        { BK_EQ_HybridAudioProcessor::kSslHfDb,  kRedStrip,   873, 192,  95 },  // HF dB
+        { BK_EQ_HybridAudioProcessor::kSslHfHz,  kRedStrip,  1149, 192,  95 },  // HF Hz
+        { BK_EQ_HybridAudioProcessor::kSslHmfDb, kGreenStrip, 873, 314,  95 },  // HMF dB
+        { BK_EQ_HybridAudioProcessor::kSslHmfQ,  kGreenStrip,1012, 314,  95 },  // HMF Q
+        { BK_EQ_HybridAudioProcessor::kSslHmfHz, kGreenStrip,1149, 314,  95 },  // HMF Hz
+        { BK_EQ_HybridAudioProcessor::kSslLmfDb, kBlueStrip,  873, 434,  95 },  // LMF dB
+        { BK_EQ_HybridAudioProcessor::kSslLmfQ,  kBlueStrip, 1012, 434,  95 },  // LMF Q
+        { BK_EQ_HybridAudioProcessor::kSslLmfHz, kBlueStrip, 1149, 434,  95 },  // LMF Hz
+        { BK_EQ_HybridAudioProcessor::kSslLfDb,  kBrownStrip, 873, 567,  95 },  // LF dB
+        { BK_EQ_HybridAudioProcessor::kSslLfHz,  kBrownStrip,1150, 567,  95 },  // LF Hz
     };
 
     /** 中央 VU 开窗：底图烘入的黑矩形实测 x[523,757] y[164,334]。 */
