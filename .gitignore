@@ -13,6 +13,9 @@ vendor/
 #   删掉本节即可（总计约 12 MB）。
 assets/
 
+# ---- 生成产物 ----
+Source/BuildInfo.h
+
 # ---- 其它 ----
 _cmtest/
 *.log
