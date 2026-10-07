@@ -27,9 +27,19 @@ $assetDir = Join-Path $root 'assets'
 if (-not $Source) {
     $Source = Join-Path $root '..\AnalogBlend\Images'
 }
-$Source = (Resolve-Path -LiteralPath $Source -ErrorAction Stop).Path
 
 Write-Host '== 同步 UI 素材 ==' -ForegroundColor Cyan
+
+# 源不存在时不算错误：
+#   - 从 ASCII 镜像构建时，镜像的 assets 是指回真实目录的联接，本就不需要同步
+#   - 工程独立分发（自带 assets）时也不需要同步
+if (-not (Test-Path -LiteralPath $Source)) {
+    Write-Host "  源不存在，跳过同步：$Source" -ForegroundColor Yellow
+    Write-Host '  （ASCII 镜像或自带素材的工程属正常情况）'
+    exit 0
+}
+$Source = (Resolve-Path -LiteralPath $Source).Path
+
 Write-Host "  源：$Source"
 New-Item -ItemType Directory -Path $assetDir -Force | Out-Null
 

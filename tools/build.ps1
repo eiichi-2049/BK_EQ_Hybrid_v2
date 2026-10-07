@@ -141,7 +141,8 @@ Write-Host ("  {0}" -f $vst3.FullName) -ForegroundColor Green
 
 if ($Install) {
     Write-Host '== 安装到本机测试目录 ==' -ForegroundColor Cyan
-    & (Join-Path $PSScriptRoot 'install-vst3.ps1') -Source $vst3.FullName -Label 'v2-poc'
+    # 标签带时间戳：固定标签在重复构建时会与已有留档重名而报错
+    & (Join-Path $PSScriptRoot 'install-vst3.ps1') -Source $vst3.FullName -Label ("poc-" + (Get-Date -Format 'MMdd-HHmm'))
 }
 
 Write-Host ''

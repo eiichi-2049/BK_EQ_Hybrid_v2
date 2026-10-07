@@ -54,13 +54,41 @@ foreach ($name in @('http_proxy', 'https_proxy', 'no_proxy', 'all_proxy')) {
     }
 }
 
+# --- 判断工程路径本身是否可用于构建 ------------------------------------------
+# 注意：不能只看「本机路径是否 ASCII」。镜像目录本身也是 ASCII 路径，
+# 但它的 assets 是联接——编译期把联接名注册进宏，镜像目录一改名就失效。
+# 本插件已经因此全黑过一次，所以要求「纯 ASCII + 素材是真实文件」才算可用。
+function Test-BuildableInPlace([string]$projectRoot) {
+    if (($projectRoot -replace '[^!-~]', '') -ne $projectRoot) { return $false }
+
+    $assets = Join-Path $projectRoot 'assets'
+    if (-not (Test-Path $assets)) { return $false }
+
+    $attr = (Get-Item $assets -Force).Attributes
+    return -not ($attr -band [System.IO.FileAttributes]::ReparsePoint)
+}
+
+# --- 已经在镜像里运行的情况 ---------------------------------------------------
+# 此时不再镜像自己（否则会把镜像复制进镜像），直接用 build.ps1 原地构建。
+if ((Resolve-Path -LiteralPath $root).Path -eq (Resolve-Path -LiteralPath $MirrorPath -ErrorAction SilentlyContinue).Path) {
+    Write-Host '== 已在 ASCII 工程目录内，直接用 build.ps1 构建 ==' -ForegroundColor Green
+    & (Join-Path $root 'tools\build.ps1') -Config $Config -Install:$Install
+    exit $LASTEXITCODE
+}
+
+if (Test-BuildableInPlace $root) {
+    Write-Host '== 工程路径为纯 ASCII 且素材为真实文件，直接在原地构建 ==' -ForegroundColor Green
+    & (Join-Path $root 'tools\build.ps1') -Config $Config -Install:$Install
+    exit $LASTEXITCODE
+}
+
 Write-Host '== 1/5 建立 ASCII 镜像 ==' -ForegroundColor Cyan
 Write-Host "  源　：$root"
 Write-Host "  镜像：$MirrorPath"
 New-Item -ItemType Directory -Path $MirrorPath -Force | Out-Null
 
 Get-ChildItem $root -Force |
-    Where-Object { $_.Name -notin @('build', 'assets', '.git') -and $_.Extension -ne '.log' } |
+    Where-Object { $_.Name -notin @('build', 'assets') -and $_.Extension -ne '.log' } |
     ForEach-Object { Copy-Item $_.FullName -Destination $MirrorPath -Recurse -Force }
 
 # assets 用目录联接，避免两份素材不同步
