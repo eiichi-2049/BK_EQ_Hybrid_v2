@@ -1,0 +1,21 @@
+# ---- 构建产物 ----
+build/
+out/
+*.user
+*.suo
+.vs/
+
+# ---- JUCE vendor（由 tools/fetch-juce.ps1 下载，约 300 MB） ----
+vendor/
+
+# ---- 素材开发副本（由 tools/sync-assets.ps1 从 v1 同步） ----
+#   说明：这些图源自冻结的 v1 工程。若要随仓库分发，
+#   删掉本节即可（总计约 12 MB）。
+assets/
+
+# ---- 其它 ----
+_cmtest/
+*.log
+Thumbs.db
+desktop.ini
+.DS_Store
