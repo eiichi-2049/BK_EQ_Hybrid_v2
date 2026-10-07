@@ -40,8 +40,12 @@
 powershell -ExecutionPolicy Bypass -File tools\fetch-juce.ps1
 
 # 编译并安装到本机测试目录
-powershell -ExecutionPolicy Bypass -File tools\build-ascii.ps1 -Install
+powershell -ExecutionPolicy Bypass -File tools\build.ps1 -Install
 ```
+
+> 本工程位于 `E:\BK_EQ_Hybrid_v2`，是纯 ASCII 路径，直接用 `build.ps1` 即可。
+> 若你把它放到含中文的路径下，构建会失败——那种情况用 `tools\build-ascii.ps1`，
+> 它会自动镜像到 ASCII 路径后构建（详见第 3 节）。
 
 `-Install` 会把产物装到 `E:\VST3\ReiVerb Work Shop\`，旧版本自动留档到 `LEGACY\`。
 
@@ -79,9 +83,12 @@ error MSB8066: "...\JuceHeader.h.rule" 的自定义生成已退出，代码为 1
 
 ### 对策
 
-工程放在**纯 ASCII 路径**下即可，例如 `E:\BK_EQ_Hybrid_v2`。若无法移动，
-用 `tools\build-ascii.ps1`：它把工程镜像到 `E:\BK_EQ_Hybrid_v2_ascii` 后构建
-（`assets\` 以目录联接指回真实目录，产物再回收）。
+工程放在**纯 ASCII 路径**下即可。本工程当前位于 `E:\BK_EQ_Hybrid_v2`，已满足。
+
+若你把它挪到含中文的路径（例如放回 `E:\个人EQ项目\编码\` 下），构建会失败；
+那种情况用 `tools\build-ascii.ps1`：它把工程镜像到纯 ASCII 路径后构建，
+`assets\` 以目录联接指回真实目录，产物再回收。
+脚本会自动判断——路径可用时直接在原地构建，不镜像。
 
 验证方法——检查构建目录下 `Defs.txt` / `Info.txt` 的非 ASCII 字节数应为 0：
 
@@ -189,11 +196,11 @@ BK_EQ_Hybrid_v2/
 │   ├── AssetLoader.h/.cpp    ← 素材路径解析与加载
 │   ├── PluginProcessor.h/.cpp← 参数定义
 │   └── PluginEditor.h/.cpp   ← 底图绘制、旋钮摆放、档位缩放
-├── assets/                   ← UI 素材（由 sync-assets.ps1 同步，不入库）
+├── assets/                   ← UI 素材（7 张，由 sync-assets.ps1 从 v1 同步）
 ├── vendor/                   ← JUCE（由脚本下载，不入库）
 └── tools/
-    ├── build-ascii.ps1       ← ★ 工程路径含中文时用这个
-    ├── build.ps1             ← 纯 ASCII 路径下的直接构建
+    ├── build.ps1             ← ★ 本工程用这个（路径为纯 ASCII）
+    ├── build-ascii.ps1       ← 工程路径含中文时才需要（自动镜像后构建）
     ├── fetch-juce.ps1        ← 下载并校验 JUCE
     ├── sync-assets.ps1       ← 从 v1 工程同步素材
     ├── install-vst3.ps1      ← 装到本机测试目录并留档旧版本
