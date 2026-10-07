@@ -15,6 +15,10 @@ assets/
 
 # ---- 生成产物 ----
 Source/BuildInfo.h
+_layout_preview.png
+_frames.png
+_verify_layout.png
+_calib_*.png
 
 # ---- 其它 ----
 _cmtest/
