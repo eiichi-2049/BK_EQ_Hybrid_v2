@@ -74,6 +74,9 @@ if ($removed.Count) {
     Write-Host "  已清理重复大小写的环境变量：$($removed -join ', ')" -ForegroundColor Yellow
 }
 
+# 刷新构建标识（会显示在界面左下角，用于确认加载的是哪一份二进制）
+& (Join-Path $PSScriptRoot 'write-build-info.ps1')
+
 if (-not (Test-Path (Join-Path $juceDir 'CMakeLists.txt'))) {
     throw "未找到 JUCE：$juceDir`n请先运行：powershell -ExecutionPolicy Bypass -File tools\fetch-juce.ps1"
 }

@@ -1,5 +1,6 @@
 ﻿#include "PluginEditor.h"
 #include "AssetLoader.h"
+#include "BuildInfo.h"
 
 namespace
 {
@@ -219,6 +220,23 @@ void BK_EQ_HybridAudioProcessorEditor::paint (juce::Graphics& g)
         g.setFont (juce::FontOptions (15.0f));
         g.drawText ("素材未找到：assets/bg.png  （检查 tools\\build-assets.ps1）",
                     getLocalBounds(), juce::Justification::centredTop, true);
+    }
+
+    // 左下角构建标识：用于确认当前加载的是哪一份二进制。
+    // 看不到它、或时间不是最新的，就说明 DAW 加载的还是旧 DLL。
+    {
+        const auto scale = kZoomLevels[(size_t) zoomIndex];
+        const int h = juce::roundToInt (16 * scale);
+        const juce::Rectangle<int> strip (backgroundArea.getX() + juce::roundToInt (6 * scale),
+                                          backgroundArea.getBottom() - h,
+                                          juce::roundToInt (190 * scale), h);
+
+        g.setColour (juce::Colours::black.withAlpha (0.55f));
+        g.fillRect (strip);
+        g.setColour (juce::Colours::yellow.withAlpha (0.95f));
+        g.setFont (juce::FontOptions (juce::jmax (9.0f, (float) (11 * scale))));
+        g.drawText (juce::String (BK_LAYOUT_TAG) + "  " + juce::String (BK_BUILD_STAMP),
+                    strip.reduced (3, 0), juce::Justification::centredLeft, false);
     }
 }
 
