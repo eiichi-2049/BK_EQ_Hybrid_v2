@@ -5,20 +5,13 @@
 #include <juce_dsp/juce_dsp.h>
 
 /**
-    BK_EQ_Hybrid v2 · POC 骨架
+    BK_EQ_Hybrid v2 · 骨架阶段
 
-    本阶段只做一件事：**验证 JUCE 的位图 UI 能否精确对齐底图**。
-    DSP 仅有一个增益参数，用于确认音频通路真的在工作。
+    参数已按最终面板布局定义完整（Pultec 8 钮 + SSL 10 钮 + PARALLEL + 输出增益），
+    但 DSP 尚未接入：processBlock 目前只做输出增益，用于确认音频通路。
 
-    参数：
-      knob0  Pultec BOOST   (0 … 24)
-      knob1  Pultec ATTEN.  (0 … 24)
-      knob2  Pultec 20/30/60/100 频选 (0 … 3)
-      knob3  SSL dB         (−24 … 24)
-      knob4  SSL HMF dB     (−24 … 24)
-      knob5  SSL LMF dB     (−24 … 24)
-      knob6  SSL LF dB      (−24 … 24)
-      outGain 输出增益 (−24 … 12 dB)，用于验证音频通路
+    参数 ID 集中在这里，避免 v1 那种散落的 setAttribute(band*5+param)
+    数字契约——那份契约曾导致频段错位、两个钮写同一参数而无人察觉。
 */
 class BK_EQ_HybridAudioProcessor : public juce::AudioProcessor
 {
@@ -51,15 +44,32 @@ public:
 
     juce::AudioProcessorValueTreeState apvts;
 
-    /** 参数 ID 常量，避免散落的字符串字面量（v1 的教训之一）。 */
-    static constexpr const char* kKnob0   = "knob0_pultecBoost";
-    static constexpr const char* kKnob1   = "knob1_pultecAtten";
-    static constexpr const char* kKnob2   = "knob2_pultecLfSel";
-    static constexpr const char* kKnob3   = "knob3_sslDb";
-    static constexpr const char* kKnob4   = "knob4_sslHmfDb";
-    static constexpr const char* kKnob5   = "knob5_sslLmfDb";
-    static constexpr const char* kKnob6   = "knob6_sslLfDb";
-    static constexpr const char* kOutGain = "outGain";
+    // ------------------------------------------------------------- 参数 ID
+    // 左 Pultec（8 钮，三行）
+    static constexpr const char* kPultecBoost    = "pultecBoost";
+    static constexpr const char* kPultecBw       = "pultecBw";
+    static constexpr const char* kPultecHfSel    = "pultecHfSel";
+    static constexpr const char* kPultecAtten    = "pultecAtten";
+    static constexpr const char* kPultecAttenSel = "pultecAttenSel";
+    static constexpr const char* kPultecAtten2   = "pultecAtten2";
+    static constexpr const char* kPultecBoost2   = "pultecBoost2";
+    static constexpr const char* kPultecLfSel    = "pultecLfSel";
+
+    // 右 SSL（10 钮，四组）
+    static constexpr const char* kSslHfDb  = "sslHfDb";
+    static constexpr const char* kSslHfHz  = "sslHfHz";
+    static constexpr const char* kSslHmfDb = "sslHmfDb";
+    static constexpr const char* kSslHmfQ  = "sslHmfQ";
+    static constexpr const char* kSslHmfHz = "sslHmfHz";
+    static constexpr const char* kSslLmfDb = "sslLmfDb";
+    static constexpr const char* kSslLmfQ  = "sslLmfQ";
+    static constexpr const char* kSslLmfHz = "sslLmfHz";
+    static constexpr const char* kSslLfDb  = "sslLfDb";
+    static constexpr const char* kSslLfHz  = "sslLfHz";
+
+    // 全局
+    static constexpr const char* kParallel = "parallel";   // 0 = 左/Pultec，1 = 右/SSL
+    static constexpr const char* kOutGain  = "outGain";
 
 private:
     static juce::AudioProcessorValueTreeState::ParameterLayout createParameterLayout();

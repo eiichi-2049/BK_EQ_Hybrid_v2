@@ -17,39 +17,45 @@ BK_EQ_HybridAudioProcessor::createParameterLayout()
 {
     juce::AudioProcessorValueTreeState::ParameterLayout layout;
 
-    // 参数集中定义：版本号、显示名、范围、默认值都在一处，
+    // 参数集中定义：ID、显示名、范围、默认值都在一处，
     // 避免 v1 那种「UI 里写 setAttribute(band*5+param) 数字契约」的错位风险。
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kKnob0, 1 }, "Pultec Boost",
-        juce::NormalisableRange<float> (0.0f, 24.0f, 0.01f), 0.0f));
+    auto db  = [] { return juce::NormalisableRange<float> (-24.0f, 24.0f, 0.01f); };
+    auto amt = [] { return juce::NormalisableRange<float> (0.0f, 24.0f, 0.01f); };
+    auto q   = [] { return juce::NormalisableRange<float> (0.1f, 5.0f, 0.01f); };
 
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kKnob1, 1 }, "Pultec Atten",
-        juce::NormalisableRange<float> (0.0f, 24.0f, 0.01f), 0.0f));
+    auto add = [&layout] (const char* id, const char* name,
+                          juce::NormalisableRange<float> range, float def)
+    {
+        layout.add (std::make_unique<juce::AudioParameterFloat> (
+            juce::ParameterID { id, 1 }, name, range, def));
+    };
 
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kKnob2, 1 }, "Pultec LF Freq",
-        juce::NormalisableRange<float> (0.0f, 3.0f, 1.0f), 0.0f));
+    // ---------------------------------------------------------------- Pultec
+    add (kPultecBoost,    "Pultec LF Boost",     amt(),                    0.0f);
+    add (kPultecBw,       "Pultec LF Bandwidth", juce::NormalisableRange<float> (0.0f, 1.0f, 0.005f), 0.5f);
+    add (kPultecHfSel,    "Pultec HF Freq",      juce::NormalisableRange<float> (0.0f, 3.0f, 1.0f), 0.0f);
+    add (kPultecAtten,    "Pultec HF Atten",     amt(),                    0.0f);
+    add (kPultecAttenSel, "Pultec HF Atten Freq",juce::NormalisableRange<float> (0.0f, 3.0f, 1.0f), 0.0f);
+    add (kPultecAtten2,   "Pultec LF Atten",     amt(),                    0.0f);
+    add (kPultecBoost2,   "Pultec LF Boost 2",   amt(),                    0.0f);
+    add (kPultecLfSel,    "Pultec LF Freq Sel",  juce::NormalisableRange<float> (0.0f, 3.0f, 1.0f), 0.0f);
 
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kKnob3, 1 }, "SSL dB",
-        juce::NormalisableRange<float> (-24.0f, 24.0f, 0.01f), 0.0f));
+    // ------------------------------------------------------------------- SSL
+    add (kSslHfDb,  "SSL HF dB",   db(),                       0.0f);
+    add (kSslHfHz,  "SSL HF Hz",   juce::NormalisableRange<float> (1500.0f, 16000.0f, 5.0f),  8000.0f);
+    add (kSslHmfDb, "SSL HMF dB",  db(),                       0.0f);
+    add (kSslHmfQ,  "SSL HMF Q",   q(),                        1.0f);
+    add (kSslHmfHz, "SSL HMF Hz",  juce::NormalisableRange<float> (600.0f, 8000.0f, 5.0f),   2000.0f);
+    add (kSslLmfDb, "SSL LMF dB",  db(),                       0.0f);
+    add (kSslLmfQ,  "SSL LMF Q",   q(),                        1.0f);
+    add (kSslLmfHz, "SSL LMF Hz",  juce::NormalisableRange<float> (200.0f, 3000.0f, 5.0f),    800.0f);
+    add (kSslLfDb,  "SSL LF dB",   db(),                       0.0f);
+    add (kSslLfHz,  "SSL LF Hz",   juce::NormalisableRange<float> (30.0f, 450.0f, 2.0f),      100.0f);
 
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kKnob4, 1 }, "SSL HMF dB",
-        juce::NormalisableRange<float> (-24.0f, 24.0f, 0.01f), 0.0f));
-
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kKnob5, 1 }, "SSL LMF dB",
-        juce::NormalisableRange<float> (-24.0f, 24.0f, 0.01f), 0.0f));
-
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kKnob6, 1 }, "SSL LF dB",
-        juce::NormalisableRange<float> (-24.0f, 24.0f, 0.01f), 0.0f));
-
-    layout.add (std::make_unique<juce::AudioParameterFloat> (
-        juce::ParameterID { kOutGain, 1 }, "Output Gain",
-        juce::NormalisableRange<float> (-24.0f, 12.0f, 0.01f), 0.0f));
+    // ------------------------------------------------------------------ 全局
+    // 0 = 左侧 Pultec，1 = 右侧 SSL（用户明确要求的方向）
+    add (kParallel, "Parallel",    juce::NormalisableRange<float> (0.0f, 1.0f, 0.005f), 0.5f);
+    add (kOutGain,  "Output Gain", juce::NormalisableRange<float> (-24.0f, 12.0f, 0.01f), 0.0f);
 
     return layout;
 }

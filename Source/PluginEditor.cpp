@@ -3,72 +3,96 @@
 
 namespace
 {
-    /** 一个旋钮在底图坐标系里的位置与尺寸。
-        中心点取自 v1 底图（bg.png）上实测的占位圆圆心；
-        尺寸取占位圆直径，这样旋钮的可见部分会恰好盖住底图那圈虚线。 */
+    /** 一个旋钮在底图坐标系（1280×720）里的位置与尺寸。 */
     struct KnobPlacement
     {
         const char* paramID;
-        int centreX, centreY;   // 底图坐标系
+        const char* stripFile;
+        int centreX, centreY;
         int diameter;
     };
 
-    // 素材内容盒实测值（见 tools\selfcheck.py）：
+    // 素材内容盒（帧内可见部分，用于把图形精确铺满 rect）：
     //   fs_pultec.png                 帧 160，可见 x[9,150]  → 内容 142
     //   fs_red/green/blue/brown.png   帧 160，可见 x[1,158]  → 内容 158
-    // 说明：SSL 四色钮先用同一数值标定，待各色钮实测后再按需细分。
     constexpr int kPultecFrames = 91, kPultecContent = 142;
     constexpr int kSslFrames    = 91, kSslContent    = 158;
 
-    // 底图（bg.png）上占位圆的实测圆心与直径
+    const char* const kPultecStrip = "fs_pultec.png";
+    const char* const kRedStrip    = "fs_red.png";
+    const char* const kGreenStrip  = "fs_green.png";
+    const char* const kBlueStrip   = "fs_blue.png";
+    const char* const kBrownStrip  = "fs_brown.png";
+
+    // ------------------------------------------------------------------------
+    // 坐标表（底图坐标系 1280×720）—— 来源：MAIN-UI-UNDERLAY 实测
+    //
+    //  左 Pultec：三行标签中心实测 y≈118 / 300 / 485，白色定位点在 y≈150 /
+    //    332 / 515（旋钮圆上缘）。列中心 x≈140 / 272（大钮），400（频选小钮）。
+    //  右 SSL：底图上 4 个白色定位圈，实测中心 (874,342) (1012,558)
+    //    (1011,771) (873,1008)，直径约 100。
+    //
+    // ⚠ 这些坐标需要在插件里目视复核。若整体偏移，改这里的数字即可
+    //   （见 DEVELOPMENT.md「坐标标定」）。
+    // ------------------------------------------------------------------------
     const KnobPlacement placements[] =
     {
-        { BK_EQ_HybridAudioProcessor::kKnob0, 123, 194,  99 },  // Pultec BOOST
-        { BK_EQ_HybridAudioProcessor::kKnob1, 267, 377,  99 },  // Pultec ATTEN.
-        { BK_EQ_HybridAudioProcessor::kKnob2, 399, 570,  78 },  // Pultec 20/30/60/100
-        { BK_EQ_HybridAudioProcessor::kKnob3, 872, 191, 100 },  // SSL 红·dB
-        { BK_EQ_HybridAudioProcessor::kKnob4, 873, 313, 100 },  // SSL 绿·HMF dB
-        { BK_EQ_HybridAudioProcessor::kKnob5, 872, 433, 100 },  // SSL 蓝·LMF dB
-        { BK_EQ_HybridAudioProcessor::kKnob6, 874, 566, 100 },  // SSL 棕·LF dB
+        // ---------------------------- 左 Pultec（8 钮）
+        { BK_EQ_HybridAudioProcessor::kPultecBoost,    kPultecStrip, 140, 208, 100 },  // R1 BOOST
+        { BK_EQ_HybridAudioProcessor::kPultecBw,       kPultecStrip, 272, 208, 100 },  // R1 BD.WITH
+        { BK_EQ_HybridAudioProcessor::kPultecHfSel,    kPultecStrip, 400, 208,  78 },  // R1 3/5/10/16k
+        { BK_EQ_HybridAudioProcessor::kPultecAtten,    kPultecStrip, 140, 390, 100 },  // R2 ATTEN.
+        { BK_EQ_HybridAudioProcessor::kPultecAttenSel, kPultecStrip, 272, 390, 100 },  // R2 ATTEN.SEL
+        { BK_EQ_HybridAudioProcessor::kPultecAtten2,   kPultecStrip, 140, 573, 100 },  // R3 ATTEN.
+        { BK_EQ_HybridAudioProcessor::kPultecBoost2,   kPultecStrip, 272, 573, 100 },  // R3 BOOST
+        { BK_EQ_HybridAudioProcessor::kPultecLfSel,    kPultecStrip, 400, 573,  78 },  // R3 20/30/60/100
+
+        // ---------------------------- 右 SSL（10 钮）
+        { BK_EQ_HybridAudioProcessor::kSslHfDb,  kRedStrip,   874, 342, 100 },  // HF dB
+        { BK_EQ_HybridAudioProcessor::kSslHfHz,  kRedStrip,  1012, 342, 100 },  // HF Hz
+        { BK_EQ_HybridAudioProcessor::kSslHmfDb, kGreenStrip, 874, 559, 100 },  // HMF dB
+        { BK_EQ_HybridAudioProcessor::kSslHmfQ,  kGreenStrip,1012, 559, 100 },  // HMF Q
+        { BK_EQ_HybridAudioProcessor::kSslHmfHz, kGreenStrip,1150, 559, 100 },  // HMF Hz
+        { BK_EQ_HybridAudioProcessor::kSslLmfDb, kBlueStrip,  873, 772, 100 },  // LMF dB
+        { BK_EQ_HybridAudioProcessor::kSslLmfQ,  kBlueStrip, 1011, 772, 100 },  // LMF Q
+        { BK_EQ_HybridAudioProcessor::kSslLmfHz, kBlueStrip, 1149, 772, 100 },  // LMF Hz
+        { BK_EQ_HybridAudioProcessor::kSslLfDb,  kBrownStrip, 873, 1008, 100 }, // LF dB
+        { BK_EQ_HybridAudioProcessor::kSslLfHz,  kBrownStrip,1148, 1008, 100 }, // LF Hz
     };
 
-    /** 每个旋钮用哪张 filmstrip：前三（Pultec）黑钮，后四（SSL）按色分。 */
-    struct Strip { const char* fileName; int frames; int content; };
-    const Strip strips[] =
-    {
-        { "fs_pultec.png", kPultecFrames, kPultecContent },
-        { "fs_pultec.png", kPultecFrames, kPultecContent },
-        { "fs_pultec.png", kPultecFrames, kPultecContent },
-        { "fs_red.png",    kSslFrames,    kSslContent    },
-        { "fs_green.png",  kSslFrames,    kSslContent    },
-        { "fs_blue.png",   kSslFrames,    kSslContent    },
-        { "fs_brown.png",  kSslFrames,    kSslContent    },
-    };
+    /** 中央 VU 开窗：底图烘入的黑矩形实测 x[523,757] y[164,334]。 */
+    constexpr int kVuX = 523, kVuY = 164, kVuW = 235, kVuH = 171;
 
-    static_assert (juce::numElementsInArray (placements) == juce::numElementsInArray (strips),
-                   "placements 与 strips 必须一一对应");
+    /** 中央 PARALLEL 翼形旋钮：底图上的深色圆，直径约 146。 */
+    constexpr int kParX = 640, kParY = 575, kParD = 146;
 }
+
 
 BK_EQ_HybridAudioProcessorEditor::BK_EQ_HybridAudioProcessorEditor (BK_EQ_HybridAudioProcessor& p)
     : AudioProcessorEditor (&p), processor (p)
 {
     background = AssetLoader::loadImage ("bg.png");
 
-    // 中央 VU 表盘：位置取 v1 工程里的面板坐标 (524,163) 268×172。
-    // 目前是静态贴图；正式版的表针会跟随真实信号（v1 已做过，见 docs/spec）。
-    constexpr int kVuX = 524, kVuY = 163, kVuW = 268, kVuH = 172;
+    // 中央 VU 表盘（静态贴图；表针跟随信号留待 DSP 接入后再做）
     vuDesignArea = { kVuX, kVuY, kVuW, kVuH };
-    if (auto vuImage = AssetLoader::loadImage ("vu_meter.png"); vuImage.isValid())
+    if (auto img = AssetLoader::loadImage ("vu_meter.png"); img.isValid())
     {
-        vuBox = std::make_unique<ImageBox> (vuImage);
+        vuBox = std::make_unique<ImageBox> (img);
         addAndMakeVisible (*vuBox);
+    }
+
+    // 中央 PARALLEL 翼形旋钮：底图上虽有图形，仍单独绘制一份以便日后做旋转交互
+    parallelDesignArea = { kParX - kParD / 2, kParY - kParD / 2, kParD, kParD };
+    if (auto img = AssetLoader::loadImage ("parallel_knob.png"); img.isValid())
+    {
+        parallelBox = std::make_unique<ImageBox> (img);
+        addAndMakeVisible (*parallelBox);
     }
 
     buildKnobs();
     buildZoomButton();
 
-    // 固定档位缩放：允许改变大小，但不允许自由拉伸
-    setResizable (true, false);
+    setResizable (true, false);   // 固定档位缩放，不允许自由拉伸
     applyZoomLevel();
 }
 
@@ -79,23 +103,12 @@ void BK_EQ_HybridAudioProcessorEditor::buildKnobs()
     for (int i = 0; i < (int) juce::numElementsInArray (placements); ++i)
     {
         const auto& pl = placements[i];
-        const auto& st = strips[i];
 
-        double minV = 0.0, maxV = 24.0;
-        if (i == 2) { minV = 0.0;   maxV = 3.0;  }   // 频选 4 档
-        if (i >= 3) { minV = -24.0; maxV = 24.0; }   // SSL dB
+        const bool isPultec = pl.stripFile == kPultecStrip;
+        const int frames  = isPultec ? kPultecFrames  : kSslFrames;
+        const int content = isPultec ? kPultecContent : kSslContent;
 
-        auto* knob = new BitmapKnob (pl.paramID, st.fileName,
-                                     st.frames, st.content,
-                                     minV, maxV, 0.0);
-        knob->setIndexLabel (i);
-        addAndMakeVisible (knob);
-        knobs.add (knob);
-
-        // BitmapKnob 是 juce::Component 而非 juce::Slider，因此不能用
-        // SliderAttachment，改用 ParameterAttachment 做双向桥接：
-        //   旋钮 → 参数（拖动时上报宿主）
-        //   参数 → 旋钮（宿主自动化或载入预设时刷新显示）
+        // 由参数自身决定取值范围，避免 UI 与参数各写一套常量
         auto* param = processor.apvts.getParameter (pl.paramID);
         if (param == nullptr)
         {
@@ -103,11 +116,22 @@ void BK_EQ_HybridAudioProcessorEditor::buildKnobs()
             continue;
         }
 
+        const auto& range = param->getNormalisableRange();
+        const auto def = param->convertFrom0to1 (param->getDefaultValue());
+
+        auto* knob = new BitmapKnob (pl.paramID, pl.stripFile, frames, content,
+                                     (double) range.start, (double) range.end, (double) def);
+        knob->setIndexLabel (i);
+        addAndMakeVisible (knob);
+        knobs.add (knob);
+
+        // 旋钮 → 参数（拖动时上报宿主）
         knob->onValueChange = [param] (double v)
         {
             param->setValueNotifyingHost (param->convertTo0to1 ((float) v));
         };
 
+        // 参数 → 旋钮（宿主自动化或载入预设时刷新显示）
         attachments.push_back (std::make_unique<juce::ParameterAttachment> (
             *param,
             [knob] (float newValue)
@@ -120,7 +144,6 @@ void BK_EQ_HybridAudioProcessorEditor::buildKnobs()
 
 void BK_EQ_HybridAudioProcessorEditor::buildZoomButton()
 {
-    // 右下角：点击弹出档位菜单，随档位一起缩放
     zoomButton.setButtonText ("100%");
     zoomButton.setTooltip ("选择缩放档位");
     zoomButton.setLookAndFeel (&zoomLookAndFeel);
@@ -130,18 +153,14 @@ void BK_EQ_HybridAudioProcessorEditor::buildZoomButton()
 
 void BK_EQ_HybridAudioProcessorEditor::showZoomMenu()
 {
-    // 弹出二级菜单让用户选择档位。
-    // 不用「点击即循环」是因为档位只有 5 个，直接列出比反复点击直观得多。
+    // 直接列出 5 个档位，比「点击即循环」直观
     juce::PopupMenu menu;
     menu.setLookAndFeel (&zoomLookAndFeel);
 
     for (int i = 0; i < (int) kZoomLevels.size(); ++i)
     {
         const auto percent = juce::roundToInt (kZoomLevels[(size_t) i] * 100.0);
-        menu.addItem (i + 1,
-                      juce::String (percent) + "%",
-                      true,                       // enabled
-                      i == zoomIndex);            // 当前档位打勾
+        menu.addItem (i + 1, juce::String (percent) + "%", true, i == zoomIndex);
     }
 
     menu.showMenuAsync (juce::PopupMenu::Options()
@@ -192,10 +211,9 @@ void BK_EQ_HybridAudioProcessorEditor::paint (juce::Graphics& g)
     }
     else
     {
-        // 素材缺失时给出明确提示。否则只会看到一块黑屏，无从判断原因。
         g.setColour (juce::Colours::orangered);
         g.setFont (juce::FontOptions (15.0f));
-        g.drawText ("素材未找到：assets/bg.png  （检查 tools\\sync-assets.ps1 与 CMake 的 BK_ASSETS_DIR）",
+        g.drawText ("素材未找到：assets/bg.png  （检查 tools\\build-assets.ps1）",
                     getLocalBounds(), juce::Justification::centredTop, true);
     }
 }
@@ -204,7 +222,6 @@ void BK_EQ_HybridAudioProcessorEditor::resized()
 {
     const auto area = getLocalBounds();
 
-    // 底图按比例铺满窗口（保持 16:9）
     if (background.isValid() && background.getWidth() > 0 && background.getHeight() > 0)
         backgroundArea = juce::RectanglePlacement (juce::RectanglePlacement::centred)
                             .appliedTo (juce::Rectangle<int> (background.getWidth(),
@@ -213,18 +230,37 @@ void BK_EQ_HybridAudioProcessorEditor::resized()
     else
         backgroundArea = area;
 
-    layOutKnobs();
+    // 底图坐标系 → 屏幕坐标系的统一映射
+    const auto sx = (float) backgroundArea.getWidth()  / (float) kDesignWidth;
+    const auto sy = (float) backgroundArea.getHeight() / (float) kDesignHeight;
 
-    // VU 表盘随底图坐标系摆放
-    if (vuBox != nullptr)
+    auto toScreen = [this, sx, sy] (juce::Rectangle<int> design)
     {
-        const auto vx = (float) backgroundArea.getWidth()  / (float) kDesignWidth;
-        const auto vy = (float) backgroundArea.getHeight() / (float) kDesignHeight;
+        return juce::Rectangle<int> (
+            backgroundArea.getX() + juce::roundToInt (design.getX() * sx),
+            backgroundArea.getY() + juce::roundToInt (design.getY() * sy),
+            juce::jmax (1, juce::roundToInt (design.getWidth()  * sx)),
+            juce::jmax (1, juce::roundToInt (design.getHeight() * sy)));
+    };
+    auto centreScreen = [this, sx, sy] (int cx, int cy, int d)
+    {
+        const int w = juce::jmax (1, juce::roundToInt (d * sx));
+        const int h = juce::jmax (1, juce::roundToInt (d * sy));
+        return juce::Rectangle<int> (w, h).withCentre (
+            { backgroundArea.getX() + juce::roundToInt (cx * sx),
+              backgroundArea.getY() + juce::roundToInt (cy * sy) });
+    };
 
-        vuBox->setBounds (backgroundArea.getX() + juce::roundToInt (vuDesignArea.getX() * vx),
-                          backgroundArea.getY() + juce::roundToInt (vuDesignArea.getY() * vy),
-                          juce::jmax (1, juce::roundToInt (vuDesignArea.getWidth()  * vx)),
-                          juce::jmax (1, juce::roundToInt (vuDesignArea.getHeight() * vy)));
+    if (vuBox != nullptr)
+        vuBox->setBounds (toScreen (vuDesignArea));
+
+    if (parallelBox != nullptr)
+        parallelBox->setBounds (toScreen (parallelDesignArea));
+
+    for (int i = 0; i < knobs.size() && i < (int) juce::numElementsInArray (placements); ++i)
+    {
+        const auto& pl = placements[i];
+        knobs[i]->setBounds (centreScreen (pl.centreX, pl.centreY, pl.diameter));
     }
 
     const auto scale = kZoomLevels[(size_t) zoomIndex];
@@ -235,25 +271,4 @@ void BK_EQ_HybridAudioProcessorEditor::resized()
     zoomButton.setBounds (backgroundArea.getRight()  - margin - bw,
                           backgroundArea.getBottom() - margin - bh,
                           bw, bh);
-    // 字号由 zoomLookAndFeel 依据按钮高度决定，这里无需再设
-}
-
-void BK_EQ_HybridAudioProcessorEditor::layOutKnobs()
-{
-    // 底图坐标系 → 屏幕坐标系。所有摆放计算都在底图坐标系里做，
-    // 因此缩放不会破坏旋钮与底图的相对位置。
-    const auto sx = (float) backgroundArea.getWidth()  / (float) kDesignWidth;
-    const auto sy = (float) backgroundArea.getHeight() / (float) kDesignHeight;
-
-    for (int i = 0; i < knobs.size() && i < (int) juce::numElementsInArray (placements); ++i)
-    {
-        const auto& pl = placements[i];
-
-        const int screenX = backgroundArea.getX() + juce::roundToInt (pl.centreX * sx);
-        const int screenY = backgroundArea.getY() + juce::roundToInt (pl.centreY * sy);
-        const int w = juce::jmax (1, juce::roundToInt (pl.diameter * sx));
-        const int h = juce::jmax (1, juce::roundToInt (pl.diameter * sy));
-
-        knobs[i]->setBounds (juce::Rectangle<int> (w, h).withCentre ({ screenX, screenY }));
-    }
 }

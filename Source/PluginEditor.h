@@ -70,6 +70,9 @@ private:
     std::unique_ptr<ImageBox> vuBox;                         // 中央 VU 表盘
     juce::Rectangle<int> vuDesignArea;                       // VU 在底图坐标系里的位置
 
+    std::unique_ptr<ImageBox> parallelBox;                   // 中央 PARALLEL 翼形旋钮
+    juce::Rectangle<int> parallelDesignArea;
+
     juce::TextButton zoomButton;                             // 右下角：点击弹出档位菜单
     int zoomIndex = kDefaultZoomIndex;
 
