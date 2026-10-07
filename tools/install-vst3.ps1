@@ -32,7 +32,14 @@ $ErrorActionPreference = 'Stop'
 $root       = Split-Path -Parent $PSScriptRoot
 $installDir = 'E:\VST3\ReiVerb Work Shop'
 $target     = Join-Path $installDir 'BK_EQ_Hybrid_v2.vst3'
-$legacyDir  = Join-Path $installDir 'LEGACY'
+
+# 历史版本必须放在 **VST3 扫描路径之外**。
+# 曾经把 LEGACY 放在 $installDir 下，结果 Ableton 把每一份副本都当插件扫描：
+#   check plugin at path: "...\BK_EQ_Hybrid_v2.vst3"
+#   check plugin at path: "...\LEGACY\BK_EQ_Hybrid_v2.vst3"          ← 同 ID 冲突
+#   check plugin at path: "...\LEGACY\BK_EQ_Hybrid_v2_poc-*.vst3"    ← 同 ID 冲突
+# 三份副本共享同一个插件 ID，宿主会加载其中任意一份（往往是旧的）。
+$legacyDir  = 'E:\VST3_LEGACY\ReiVerb Work Shop'
 $legacyCur  = Join-Path $legacyDir  'BK_EQ_Hybrid_v2.vst3'
 
 if (-not $Label) { $Label = Get-Date -Format 'yyyyMMdd-HHmmss' }
