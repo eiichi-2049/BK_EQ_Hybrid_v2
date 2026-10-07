@@ -1,10 +1,10 @@
 <!--
-  来源：GitHub 仓库 eiichi-2049/BK_EQ_Hybrid 的 main 分支根 README.md
-  拉取时间：2026-10-07
-  说明：该文件原为仓库根 README（面向使用者的发行门面）。
-        本地建立工作仓库后根 README 改作开发说明，此份原样存档以免丢失。
-        其中引用的两张插图使用 GitHub 附件链接（user-attachments），
-        仅在该仓库页面可正常显示。
+  来源：GitHub 仓库 eiichi-2049/BK_EQ_Hybrid（v1）的 main 分支根 README.md
+  存档时间：2026-10-07
+
+  说明：v1 仓库已弃用，其首页文档原样保存于此以免丢失。
+        两张插图使用 GitHub 附件链接（user-attachments），更换仓库后仍可显示。
+        v1 的源码在本地 编码\AnalogBlend\，已打标签 v1.0.0-hise 冻结。
 -->
 
 # 🎛️ BK_EQ_Hybrid ( VST3 )
