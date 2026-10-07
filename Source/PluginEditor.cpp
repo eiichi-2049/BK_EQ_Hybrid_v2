@@ -8,22 +8,29 @@ namespace
     struct KnobPlacement
     {
         const char* paramID;
-        const char* stripFile;
+        const char* assetFile;
+        int frames;         // 1 = 单张静态图（整图旋转）；>1 = filmstrip
+        int contentBox;     // 素材内可见部分的边长
         int centreX, centreY;
         int diameter;
     };
 
-    // 素材内容盒（帧内可见部分，用于把图形精确铺满 rect）：
-    //   fs_pultec.png                 帧 160，可见 x[9,150]  → 内容 142
-    //   fs_red/green/blue/brown.png   帧 160，可见 x[1,158]  → 内容 158
+    // 素材内容盒（素材内可见部分，用于把图形精确铺满 rect）：
+    //   fs_pultec.png        帧 160，可见 142  → 内容 142，91 帧
+    //   ssl_*.png            单张静态图，802x817 可见 800x815 → 内容 800
     constexpr int kPultecFrames = 91, kPultecContent = 142;
-    constexpr int kSslFrames    = 91, kSslContent    = 158;
+    constexpr int kSslFrames    = 1,  kSslContent    = 800;
 
-    const char* const kPultecStrip = "fs_pultec.png";
-    const char* const kRedStrip    = "fs_red.png";
-    const char* const kGreenStrip  = "fs_green.png";
-    const char* const kBlueStrip   = "fs_blue.png";
-    const char* const kBrownStrip  = "fs_brown.png";
+    // 左 Pultec 仍用旧 filmstrip：其指针 0→90 帧走了约一整圈，
+    // 而旋钮面上 0–10 的刻度只占约 270°，因此靠角范围收敛到刻度跨度。
+    // 后续若换成「单张旋钮面 + 独立指针」素材，把 frames 改成 1 即可。
+    constexpr double kPultecSweep = 270.0;
+
+    const char* const kPultecAsset = "fs_pultec.png";
+    const char* const kSslRed      = "ssl_red.png";
+    const char* const kSslGreen    = "ssl_green.png";
+    const char* const kSslBlue     = "ssl_blue.png";
+    const char* const kSslBrown    = "ssl_brown.png";
 
     // ------------------------------------------------------------------------
     // 坐标表（底图坐标系 1280×720）—— 来源：MAIN-UI-UNDERLAY 实测
@@ -43,26 +50,28 @@ namespace
     const KnobPlacement placements[] =
     {
         // ---------------------------- 左 Pultec（8 钮）
-        { BK_EQ_HybridAudioProcessor::kPultecBoost,    kPultecStrip, 128, 170, 100 },  // R1 BOOST
-        { BK_EQ_HybridAudioProcessor::kPultecBw,       kPultecStrip, 263, 170, 100 },  // R1 BD.WITH
-        { BK_EQ_HybridAudioProcessor::kPultecHfSel,    kPultecStrip, 401, 172,  84 },  // R1 3/5/10/16k
-        { BK_EQ_HybridAudioProcessor::kPultecAtten,    kPultecStrip, 128, 355, 100 },  // R2 ATTEN.
-        { BK_EQ_HybridAudioProcessor::kPultecAttenSel, kPultecStrip, 263, 355, 100 },  // R2 ATTEN.SEL
-        { BK_EQ_HybridAudioProcessor::kPultecAtten2,   kPultecStrip, 128, 540, 100 },  // R3 ATTEN.
-        { BK_EQ_HybridAudioProcessor::kPultecBoost2,   kPultecStrip, 263, 540, 100 },  // R3 BOOST
-        { BK_EQ_HybridAudioProcessor::kPultecLfSel,    kPultecStrip, 401, 542,  84 },  // R3 20/30/60/100
+        // 行中心比初版下移 20px：用户反馈「靠上了」
+        { BK_EQ_HybridAudioProcessor::kPultecBoost,    kPultecAsset, kPultecFrames, kPultecContent, 128, 190, 100 },  // R1 BOOST
+        { BK_EQ_HybridAudioProcessor::kPultecBw,       kPultecAsset, kPultecFrames, kPultecContent, 263, 190, 100 },  // R1 BD.WITH
+        { BK_EQ_HybridAudioProcessor::kPultecHfSel,    kPultecAsset, kPultecFrames, kPultecContent, 401, 190,  92 },  // R1 3/5/10/16k
+        { BK_EQ_HybridAudioProcessor::kPultecAtten,    kPultecAsset, kPultecFrames, kPultecContent, 128, 375, 100 },  // R2 ATTEN.
+        { BK_EQ_HybridAudioProcessor::kPultecAttenSel, kPultecAsset, kPultecFrames, kPultecContent, 263, 375, 100 },  // R2 ATTEN.SEL
+        { BK_EQ_HybridAudioProcessor::kPultecAtten2,   kPultecAsset, kPultecFrames, kPultecContent, 128, 560, 100 },  // R3 ATTEN.
+        { BK_EQ_HybridAudioProcessor::kPultecBoost2,   kPultecAsset, kPultecFrames, kPultecContent, 263, 560, 100 },  // R3 BOOST
+        { BK_EQ_HybridAudioProcessor::kPultecLfSel,    kPultecAsset, kPultecFrames, kPultecContent, 401, 560,  92 },  // R3 20/30/60/100
 
         // ---------------------------- 右 SSL（10 钮，中心即灰色定位圆位置）
-        { BK_EQ_HybridAudioProcessor::kSslHfDb,  kRedStrip,   873, 192,  95 },  // HF dB
-        { BK_EQ_HybridAudioProcessor::kSslHfHz,  kRedStrip,  1149, 192,  95 },  // HF Hz
-        { BK_EQ_HybridAudioProcessor::kSslHmfDb, kGreenStrip, 873, 314,  95 },  // HMF dB
-        { BK_EQ_HybridAudioProcessor::kSslHmfQ,  kGreenStrip,1012, 314,  95 },  // HMF Q
-        { BK_EQ_HybridAudioProcessor::kSslHmfHz, kGreenStrip,1149, 314,  95 },  // HMF Hz
-        { BK_EQ_HybridAudioProcessor::kSslLmfDb, kBlueStrip,  873, 434,  95 },  // LMF dB
-        { BK_EQ_HybridAudioProcessor::kSslLmfQ,  kBlueStrip, 1012, 434,  95 },  // LMF Q
-        { BK_EQ_HybridAudioProcessor::kSslLmfHz, kBlueStrip, 1149, 434,  95 },  // LMF Hz
-        { BK_EQ_HybridAudioProcessor::kSslLfDb,  kBrownStrip, 873, 567,  95 },  // LF dB
-        { BK_EQ_HybridAudioProcessor::kSslLfHz,  kBrownStrip,1150, 567,  95 },  // LF Hz
+        // 单张静态图、整图旋转；92px 可「刚好盖住」直径 83.2 的灰色定位圆
+        { BK_EQ_HybridAudioProcessor::kSslHfDb,  kSslRed,   kSslFrames, kSslContent,  873, 192, 92 },  // HF dB
+        { BK_EQ_HybridAudioProcessor::kSslHfHz,  kSslRed,   kSslFrames, kSslContent, 1149, 192, 92 },  // HF Hz
+        { BK_EQ_HybridAudioProcessor::kSslHmfDb, kSslGreen, kSslFrames, kSslContent,  873, 314, 92 },  // HMF dB
+        { BK_EQ_HybridAudioProcessor::kSslHmfQ,  kSslGreen, kSslFrames, kSslContent, 1012, 314, 92 },  // HMF Q
+        { BK_EQ_HybridAudioProcessor::kSslHmfHz, kSslGreen, kSslFrames, kSslContent, 1149, 314, 92 },  // HMF Hz
+        { BK_EQ_HybridAudioProcessor::kSslLmfDb, kSslBlue,  kSslFrames, kSslContent,  873, 434, 92 },  // LMF dB
+        { BK_EQ_HybridAudioProcessor::kSslLmfQ,  kSslBlue,  kSslFrames, kSslContent, 1012, 434, 92 },  // LMF Q
+        { BK_EQ_HybridAudioProcessor::kSslLmfHz, kSslBlue,  kSslFrames, kSslContent, 1149, 434, 92 },  // LMF Hz
+        { BK_EQ_HybridAudioProcessor::kSslLfDb,  kSslBrown, kSslFrames, kSslContent,  873, 567, 92 },  // LF dB
+        { BK_EQ_HybridAudioProcessor::kSslLfHz,  kSslBrown, kSslFrames, kSslContent, 1150, 567, 92 },  // LF Hz
     };
 
     /** 中央 VU 开窗：底图烘入的黑矩形实测 x[523,757] y[164,334]。 */
@@ -109,10 +118,6 @@ void BK_EQ_HybridAudioProcessorEditor::buildKnobs()
     {
         const auto& pl = placements[i];
 
-        const bool isPultec = pl.stripFile == kPultecStrip;
-        const int frames  = isPultec ? kPultecFrames  : kSslFrames;
-        const int content = isPultec ? kPultecContent : kSslContent;
-
         // 由参数自身决定取值范围，避免 UI 与参数各写一套常量
         auto* param = processor.apvts.getParameter (pl.paramID);
         if (param == nullptr)
@@ -124,8 +129,12 @@ void BK_EQ_HybridAudioProcessorEditor::buildKnobs()
         const auto& range = param->getNormalisableRange();
         const auto def = param->convertFrom0to1 (param->getDefaultValue());
 
-        auto* knob = new BitmapKnob (pl.paramID, pl.stripFile, frames, content,
-                                     (double) range.start, (double) range.end, (double) def);
+        const bool isPultec = (pl.assetFile == kPultecAsset);
+
+        auto* knob = new BitmapKnob (pl.paramID, pl.assetFile,
+                                     pl.frames, pl.contentBox,
+                                     (double) range.start, (double) range.end, (double) def,
+                                     isPultec ? kPultecSweep : 270.0);
         knob->setIndexLabel (i);
         addAndMakeVisible (knob);
         knobs.add (knob);

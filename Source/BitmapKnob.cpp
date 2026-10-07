@@ -3,21 +3,22 @@
 
 namespace
 {
-    /** 旋钮的可用角度范围（与 HISE filmstrip 的约定一致：−135° → +135°）。 */
-    constexpr float kMinAngle = -135.0f;
-    constexpr float kMaxAngle =  135.0f;
-
     /** 纵向拖动的灵敏度：走完整个量程需要的像素数。 */
     constexpr double kPixelsForFullRange = 180.0;
+
+    /** 单张静态图模式的默认摆幅：覆盖旋钮面上刻度所占的角度。 */
+    constexpr double kDefaultSweep = 270.0;
 }
 
 BitmapKnob::BitmapKnob (const juce::String& name,
-                        const juce::String& filmstripFileName,
+                        const juce::String& imageFileName,
                         int numberOfFrames,
                         int contentBoxInPixels,
-                        double minValue, double maxValue, double initialValue)
-    : numFrames (numberOfFrames),
-      contentBox (contentBoxInPixels),
+                        double minValue, double maxValue, double initialValue,
+                        double sweep)
+    : numFrames (juce::jmax (1, numberOfFrames)),
+      contentBox (juce::jmax (1, contentBoxInPixels)),
+      sweepDegrees (sweep),
       value (initialValue),
       minVal (minValue),
       maxVal (maxValue)
@@ -25,12 +26,15 @@ BitmapKnob::BitmapKnob (const juce::String& name,
     setName (name);
 
     // 统一走 AssetLoader：它会按编译期宏、可执行文件同级、逐级向上三种方式找素材
-    filmstrip = AssetLoader::loadImage (filmstripFileName);
+    image = AssetLoader::loadImage (imageFileName);
+
+    if (! image.isValid())
+        DBG ("BitmapKnob：素材载入失败 " + imageFileName);
 
     // 位图旋钮不需要键盘焦点，但需要接收鼠标拖动
     setWantsKeyboardFocus (false);
     setMouseCursor (juce::MouseCursor::UpDownResizeCursor);
-    setBufferedToImage (true);   // 旋转绘制开销小，但缓存后可避免重绘闪烁
+    setBufferedToImage (true);
 }
 
 void BitmapKnob::setValue (double newValue)
@@ -51,49 +55,57 @@ void BitmapKnob::paint (juce::Graphics& g)
 {
     const auto bounds = getLocalBounds().toFloat();
 
-    if (filmstrip.isValid() && numFrames > 0 && contentBox > 0)
+    if (image.isValid())
     {
-        // --- 归一化取值 → 帧号 -------------------------------------------------
-        const double proportion = juce::jlimit (0.0, 1.0, (value - minVal) / (maxVal - minVal));
-        const int frameIndex = juce::jlimit (0, numFrames - 1,
-                                             (int) std::floor (proportion * (double) (numFrames - 1)));
+        // 归一化取值。范围为零时退化为 0，避免除零。
+        const double span = (maxVal - minVal);
+        const double proportion = (span > 0.0)
+                                    ? juce::jlimit (0.0, 1.0, (value - minVal) / span)
+                                    : 0.0;
 
-        // --- 帧切片（纵向排布） -----------------------------------------------
-        const int frameWidth  = filmstrip.getWidth();
-        const int frameHeight = filmstrip.getHeight() / numFrames;
-        const juce::Rectangle<int> slice (0, frameIndex * frameHeight, frameWidth, frameHeight);
+        const bool isFilmstrip = (numFrames > 1);
 
-        // --- 关键：尺寸由控件 rect 决定 ---------------------------------------
-        // 把「内容盒」密铺到 rect，而不是让贴图尺寸或某个缩放系数说了算。
+        // --- 取待绘制的位图与旋转角 -----------------------------------------
+        juce::Image  slice;
+        juce::Point<float> pivot;      // 旋转轴心（位图坐标系）
+        float angleDegrees = 0.0f;
+
+        if (isFilmstrip)
+        {
+            const int frameH = image.getHeight() / numFrames;
+            const int idx = juce::jlimit (0, numFrames - 1,
+                                          (int) std::floor (proportion * (double) (numFrames - 1)));
+            slice = image.getClippedImage ({ 0, idx * frameH, image.getWidth(), frameH });
+            pivot = { slice.getWidth() * 0.5f, slice.getHeight() * 0.5f };
+            // filmstrip 素材已把指针烘在各帧里，无需额外旋转
+            angleDegrees = 0.0f;
+        }
+        else
+        {
+            slice = image;
+            pivot = { slice.getWidth() * 0.5f, slice.getHeight() * 0.5f };
+            // 单张静态图：整图绕中心旋转。
+            // 素材的指针指向 12 点方向，故以 0° 为基准向两侧摆开。
+            angleDegrees = (float) ((proportion - 0.5) * sweepDegrees);
+        }
+
+        // --- 尺寸由控件 rect 决定 --------------------------------------------
+        // 把「内容盒」铺满 rect，而不是让贴图尺寸或某个缩放系数说了算。
         const float scale = juce::jmin (bounds.getWidth(), bounds.getHeight()) / (float) contentBox;
-
-        // --- 旋转角度 ----------------------------------------------------------
-        const float angleDegrees = kMinAngle + (float) proportion * (kMaxAngle - kMinAngle);
 
         juce::Graphics::ScopedSaveState saved (g);
 
-        // 把该帧画到「以控件中心为轴心、边长 = rect」的位置。
-        //
-        // 用 drawImageTransformed 而不是 g.addTransform + g.drawImage：
-        //  - drawImage 的 (targetArea, placement) 重载只能整图缩放，无法切帧
-        //  - JUCE 也没有 (destRect, srcRect) 这个重载
-        // 因此把「切帧 + 缩放 + 旋转 + 定位」一次写进一个仿射变换：
-        //   1) 平移，使该帧中心落到局部原点
-        //   2) 按 rect/contentBox 缩放
-        //   3) 以原点为轴心旋转
-        //   4) 平移到控件中心
-        const auto frameCentre = slice.getCentre().toFloat();
-
+        // 一次写清「把位图哪一点放到控件中心、并绕该点旋转」
         const auto transform =
-            juce::AffineTransform::translation (-frameCentre.x, -frameCentre.y)
+            juce::AffineTransform::translation (-pivot.x, -pivot.y)
                 .scaled (scale)
                 .rotated (juce::degreesToRadians (angleDegrees))
                 .translated (bounds.getCentreX(), bounds.getCentreY());
 
-        g.drawImageTransformed (filmstrip, transform);
+        g.drawImageTransformed (slice, transform);
     }
 
-    // --- 对齐核对用的辅助标记（POC 阶段开启） --------------------------------
+    // --- 对齐核对用的辅助标记 ------------------------------------------------
     if (debugOverlay)
     {
         g.setColour (juce::Colours::magenta.withAlpha (0.9f));
@@ -123,7 +135,7 @@ void BitmapKnob::mouseDown (const juce::MouseEvent& e)
 
 void BitmapKnob::mouseDrag (const juce::MouseEvent& e)
 {
-    // 纵向拖动：向上增加。JUCE 会给出相对 mouseDown 的位移。
+    // 纵向拖动：向上增加
     const double deltaY = (double) (dragStartY - e.getPosition().y);
     const double range  = maxVal - minVal;
 
@@ -132,5 +144,5 @@ void BitmapKnob::mouseDrag (const juce::MouseEvent& e)
 
 void BitmapKnob::mouseUp (const juce::MouseEvent&)
 {
-    // POC 阶段无附加行为；后续可在此加入双击复位、右键菜单等
+    // 后续可在此加入双击复位、右键菜单等
 }

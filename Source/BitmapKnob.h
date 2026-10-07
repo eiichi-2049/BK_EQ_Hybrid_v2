@@ -6,33 +6,43 @@
 #include <juce_graphics/juce_graphics.h>
 
 /**
-    BitmapKnob —— 用位图（filmstrip）绘制的旋钮。
+    BitmapKnob —— 位图旋钮，支持两种素材形式。
 
-    这个类存在的唯一目的，是验证 JUCE 能否做到 HISE 做不到的事：
-    **旋钮的绘制尺寸与位置完全由控件的矩形（rect）决定。**
+    这个类存在的意义，是保证 **旋钮的绘制尺寸与位置完全由控件的矩形决定**。
+    对照 v1：HISE 的 filmstrip 控件尺寸 = `帧宽 × scaleFactor`，与 rect 无关，
+    因此声明 116px 的钮只画出 84px，底图上的定位标记必然外露。
 
-    对照 v1 的问题：HISE 的 filmstrip 旋钮尺寸 = `帧宽 × scaleFactor`，
-    与控件 rect 无关，因此声明 116px 的按钮只画出 84px，底图上的占位环
-    必然外露，对齐无法闭环（见 v1 FROZEN.md 缺陷 1）。
+    两种模式：
+      1. **filmstrip**（frames > 1）：纵向排布的 N 帧，按取值切帧。
+         素材已把指针烘在帧里，切帧即得到指针朝向。
+      2. **单张静态图**（frames == 1）：整张图绕中心旋转。
+         适用于「指针在 12 点方向的旋钮面 + 指针」这种整体旋转的素材。
 
-    做法：
-      1. 载入纵向 filmstrip（N 帧，每帧 frameSize × frameSize）
-      2. 按内容盒（contentBox）把「可见部分」密铺到控件矩形 —— 尺寸由 rect 决定
-      3. 用 AffineTransform 绕中心旋转帧，得到指针朝向
-
-    内容盒的含义：贴图帧内往往有透明留白。实测 v1 素材：
-      fs_pultec.png  帧 160，可见范围 x[9,150] → 内容 142
-      fs_red.png     帧 160，可见范围 x[1,158] → 内容 158
-    只有按内容盒缩放，可见图形才会恰好铺满 rect。
+    缩放依据「内容盒」：贴图内常有透明留白，只有按可见范围缩放，
+    图形才会恰好铺满 rect。实测：
+      fs_pultec.png  帧 160，可见 x[9,150]  → 内容 142
+      ssl_*.png      802x817，可见 800x815  → 内容 800
 */
 class BitmapKnob : public juce::Component
 {
 public:
+    /** 构造。
+
+        @param name              控件名（仅用于调试）
+        @param imageFileName     素材文件名（相对 assets 目录）
+        @param numberOfFrames    filmstrip 帧数；1 表示单张静态图
+        @param contentBoxPixels  内容盒边长（素材内可见部分的尺寸）
+        @param minValue          取值范围下限
+        @param maxValue          取值范围上限
+        @param initialValue      初始值
+        @param sweepDegrees      指针总摆幅（仅单张静态图模式使用）
+    */
     BitmapKnob (const juce::String& name,
-                const juce::String& filmstripFileName,
+                const juce::String& imageFileName,
                 int numberOfFrames,
-                int contentBoxInPixels,
-                double minValue, double maxValue, double initialValue);
+                int contentBoxPixels,
+                double minValue, double maxValue, double initialValue,
+                double sweepDegrees = 270.0);
 
     ~BitmapKnob() override = default;
 
@@ -44,20 +54,18 @@ public:
     double getValue() const noexcept { return value; }
     void setValue (double newValue);
 
-    /** 打开后会在控件矩形上画出：
-          - 洋红细框：控件的精确 rect
-          - 青色十字：rect 中心
-          - 白字：序号 / 像素尺寸 / 当前值
-        用于肉眼核对「素材是否落在底图标的圈里」。 */
+    /** 打开后会在控件矩形上画出洋红细框、中心青十字与尺寸标注，
+        用于肉眼核对素材是否落在底图标的圈里。 */
     void setDebugOverlay (bool shouldShow) { debugOverlay = shouldShow; repaint(); }
     void setIndexLabel (int i) { indexLabel = i; }
 
     std::function<void (double)> onValueChange;
 
 private:
-    juce::Image filmstrip;
+    juce::Image image;              // filmstrip 或单张静态图
     int   numFrames;
     int   contentBox;
+    double sweepDegrees;
     int   indexLabel = -1;
     bool  debugOverlay = true;
 
