@@ -60,7 +60,7 @@ Write-Host "  镜像：$MirrorPath"
 New-Item -ItemType Directory -Path $MirrorPath -Force | Out-Null
 
 Get-ChildItem $root -Force |
-    Where-Object { $_.Name -notin @('build', 'assets') -and $_.Extension -ne '.log' } |
+    Where-Object { $_.Name -notin @('build', 'assets', '.git') -and $_.Extension -ne '.log' } |
     ForEach-Object { Copy-Item $_.FullName -Destination $MirrorPath -Recurse -Force }
 
 # assets 用目录联接，避免两份素材不同步
@@ -109,11 +109,33 @@ if ($Clean -and (Test-Path $buildDir)) {
 
 Write-Host '== 3/5 CMake 配置 ==' -ForegroundColor Cyan
 $cmake = Find-CMake
-& $cmake -S $MirrorPath -B $buildDir -G 'Visual Studio 18 2026' -A x64
+Write-Host '== 3/5 CMake 配置 ==' -ForegroundColor Cyan
+$cmake = Find-CMake
+
+# 显式传入镜像里的 ASCII 素材路径。
+# 不依赖 CMake 缓存——缓存优先级高于 CMakeLists 里的默认值，
+# 曾因此把素材路径留在一个已删除的旧目录，插件运行时全黑且难以察觉。
+$asciiAssets = ($assetsMirror -replace '\\', '/')
+Write-Host "  素材路径定义：BK_ASSETS_DIR=$asciiAssets"
+
+& $cmake -S $MirrorPath -B $buildDir -G 'Visual Studio 18 2026' -A x64 -DBK_ASSETS_DIR="$asciiAssets"
 if ($LASTEXITCODE -ne 0) {
     Write-Host '  指定生成器不可用，退回默认生成器' -ForegroundColor Yellow
-    & $cmake -S $MirrorPath -B $buildDir -A x64
+    & $cmake -S $MirrorPath -B $buildDir -A x64 -DBK_ASSETS_DIR="$asciiAssets"
     if ($LASTEXITCODE -ne 0) { throw "CMake 配置失败（退出码 $LASTEXITCODE）" }
+}
+
+# 校验实际写入编译定义的值，避免又出现陈旧缓存
+$vcx = Join-Path $buildDir 'BK_EQ_Hybrid_v2.vcxproj'
+if (Test-Path $vcx) {
+    $m = [regex]::Match((Get-Content $vcx -Raw), 'BK_ASSETS_DIR=\\?"([^"\\]+)\\?"')
+    if ($m.Success) {
+        $actual = $m.Groups[1].Value
+        Write-Host "  编译定义实际值：$actual"
+        if ($actual -ne $asciiAssets) {
+            throw "编译定义与预期不一致（缓存陈旧？）。`n  预期：$asciiAssets`n  实际：$actual`n请删除镜像 build 目录后重试：Remove-Item '$buildDir' -Recurse -Force"
+        }
+    }
 }
 
 Write-Host "== 4/5 编译 ($Config|x64) ==" -ForegroundColor Cyan
@@ -138,7 +160,8 @@ Copy-Item $built.FullName $dest -Recurse -Force
 Write-Host "  $dest" -ForegroundColor Green
 
 if ($Install) {
-    & (Join-Path $root 'tools\install-vst3.ps1') -Source $dest -Label 'v2-poc'
+    # 标签带时间戳：固定标签在重复构建时会与已有留档重名而报错
+    & (Join-Path $root 'tools\install-vst3.ps1') -Source $dest -Label ("poc-" + (Get-Date -Format 'MMdd-HHmm'))
 }
 
 Write-Host ''

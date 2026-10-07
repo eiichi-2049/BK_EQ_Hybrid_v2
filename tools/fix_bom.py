@@ -1,8 +1,9 @@
-"""Repair: 把无 BOM 的 UTF-8 .ps1 补上 BOM（PowerShell 5.1 需要它才能正确解析中文）。"""
+﻿"""Repair: 把无 BOM 的 UTF-8 .ps1 补上 BOM（PowerShell 5.1 需要它才能正确解析中文）。"""
 import sys
 
 paths = [
     r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\build.ps1',
+    r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\build-ascii.ps1',
     r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\fetch-juce.ps1',
     r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\install-vst3.ps1',
     r'E:\个人EQ项目\编码\BK_EQ_Hybrid_v2\tools\setup.ps1',

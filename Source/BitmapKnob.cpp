@@ -1,4 +1,5 @@
 ﻿#include "BitmapKnob.h"
+#include "AssetLoader.h"
 
 namespace
 {
@@ -23,12 +24,8 @@ BitmapKnob::BitmapKnob (const juce::String& name,
 {
     setName (name);
 
-    // 素材目录由 CMake 通过 BK_ASSETS_DIR 注入（见 CMakeLists.txt）
-    const auto file = juce::File (juce::String (BK_ASSETS_DIR)).getChildFile (filmstripFileName);
-    filmstrip = juce::ImageFileFormat::loadFrom (file);
-
-    if (! filmstrip.isValid())
-        DBG ("BitmapKnob: 位图载入失败 -> " + file.getFullPathName());
+    // 统一走 AssetLoader：它会按编译期宏、可执行文件同级、逐级向上三种方式找素材
+    filmstrip = AssetLoader::loadImage (filmstripFileName);
 
     // 位图旋钮不需要键盘焦点，但需要接收鼠标拖动
     setWantsKeyboardFocus (false);

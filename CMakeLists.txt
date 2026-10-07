@@ -44,6 +44,7 @@ target_sources(BK_EQ_Hybrid_v2 PRIVATE
     Source/PluginProcessor.cpp
     Source/PluginEditor.cpp
     Source/BitmapKnob.cpp
+    Source/AssetLoader.cpp
 )
 
 target_include_directories(BK_EQ_Hybrid_v2 PRIVATE Source)
@@ -60,11 +61,13 @@ endif()
 #         （CMake 按系统 ANSI 写路径、juceaide 按 UTF-8 读），详见 README 常见问题。
 #         绕开它可以先验证 UI 对齐这一核心目标。
 #
-#   路径经 ASCII 目录联接 E:\BKv2assets 传入（由 tools/build.ps1 创建），
-#   这样编译期定义里不含中文，Defs.txt 便不会出现乱码路径。
-#   若本机无法创建联接，可用 -DBK_ASSETS_DIR=<纯ASCII路径> 覆盖。
-set(BK_ASSETS_DIR_DEFAULT "E:/BKv2assets/assets")
-set(BK_ASSETS_DIR "${BK_ASSETS_DIR_DEFAULT}" CACHE PATH "素材目录（必须是纯 ASCII 路径）")
+#   素材目录默认与工程同级（assets/）。因为工程路径可能含中文，
+#   实际编译期定义由 tools/build-ascii.ps1 通过 -DBK_ASSETS_DIR=<ASCII镜像>/assets 传入。
+#
+#   注意：这里用 FORCE 覆盖缓存。
+#   若用普通 CACHE 变量，CMake 会优先使用旧缓存值，导致改了本文件也不生效
+#   （曾因此把素材路径指向一个已删除的目录，插件运行时全黑且无从察觉）。
+set(BK_ASSETS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/assets" CACHE PATH "素材目录（必须是纯 ASCII 路径）" FORCE)
 
 # 校验路径为纯 ASCII：把除 ASCII 可见字符（0x21-0x7E）之外的一切都去掉，
 # 若结果与原串不同，说明含中文/空格等字符，juceaide 会因此失败。
