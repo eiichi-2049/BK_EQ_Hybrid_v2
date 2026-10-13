@@ -15,6 +15,7 @@ assets/
 
 # ---- 生成产物 ----
 Source/BuildInfo.h
+assets/_bg_original.png
 _layout_preview.png
 _frames.png
 _verify_layout.png

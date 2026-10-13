@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     从 UI 母版素材生成工程用素材 + 一张 1280x720 布局预览图。
 
@@ -168,6 +168,12 @@ $env:PYTHONIOENCODING = 'utf-8'
 & $py $tmp
 if ($LASTEXITCODE -ne 0) { throw "素材生成失败（退出码 $LASTEXITCODE）" }
 Remove-Item $tmp -Force
+
+# 底图重生成会带回中央 VU 开窗的黑色残留，这里再修补一次。
+# 该步骤是幂等的：检测不到暗色像素时不做任何改动。
+Write-Host '== 修补中央 VU 黑区 ==' -ForegroundColor Cyan
+& $py (Join-Path $PSScriptRoot 'patch-bg-vu.py')
+if ($LASTEXITCODE -ne 0) { throw "底图修补失败（退出码 $LASTEXITCODE）" }
 
 Write-Host ''
 Get-ChildItem $assetDir -File | ForEach-Object { "  {0,10:N0}  {1}" -f $_.Length, $_.Name }
