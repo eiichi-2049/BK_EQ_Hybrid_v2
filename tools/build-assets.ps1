@@ -49,6 +49,7 @@ Write-Host "  Python: $py"
 
 $script = @"
 import os, json
+import numpy as np
 from PIL import Image, ImageDraw
 
 SRC = r'$Source'
@@ -63,10 +64,14 @@ JOBS = [
     ('vu_meter.png',      'MID-UVMETER-BOARD.png',      (235, 171)),
     ('parallel_knob.png', 'MID-PARALLEL.png',           None),
     ('needle.png',        'MID-NIDDLE.png',             None),
-    ('ssl_red.png',       'SSL KNOB COLORED RED.png',   None),
-    ('ssl_green.png',     'SSL KNOB COLORED GREEN.png', None),
-    ('ssl_blue.png',      'SSL KNOB COLORED BLUE.png',  None),
-    ('ssl_brown.png',     'SSL KNOB COLORED BROWN.png', None),
+    # SSL 旋钮：母版 802x817，而插件里只显示 92px。若让插件的渲染后端做
+    # 8.7 倍降采样，细部（如中心白圆那圈描边）会碎成明显的黑点。
+    # 因此在这里先做高质量预降采样到 2 倍显示尺寸（184px，兼顾 140% 缩放），
+    # 用预乘 alpha 避免半透明边缘掺入黑色。
+    ('ssl_red.png',       'SSL KNOB COLORED RED.png',   (184, 184)),
+    ('ssl_green.png',     'SSL KNOB COLORED GREEN.png', (184, 184)),
+    ('ssl_blue.png',      'SSL KNOB COLORED BLUE.png',  (184, 184)),
+    ('ssl_brown.png',     'SSL KNOB COLORED BROWN.png', (184, 184)),
 ]
 
 if CLEAN:
@@ -74,13 +79,53 @@ if CLEAN:
         p = os.path.join(DST, name)
         if os.path.exists(p): os.remove(p)
 
+
+def resize_premultiplied(im, size, bleed=6):
+    """高质量降采样：预乘 alpha + 颜色扩散，避免边缘黑晕与锯齿。
+
+    非预乘缩放时，完全透明处的 RGB 通常是 0（黑），与相邻不透明像素
+    平均后会把黑色掺进边缘。先预乘再缩放、最后除回即可消除。
+    """
+    src = im.convert('RGBA')
+
+    if bleed:
+        # 把不透明像素的颜色向透明区扩散，压掉边缘残留的黑
+        arr = np.asarray(src).astype(np.float32)
+        rgb, alpha = arr[:, :, :3].copy(), arr[:, :, 3].copy()
+        h, w = alpha.shape
+        for _ in range(bleed):
+            known = alpha > 8
+            acc = np.zeros_like(rgb)
+            cnt = np.zeros((h, w), np.float32)
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                sk = np.roll(known, (dy, dx), (0, 1))
+                acc += np.roll(rgb, (dy, dx), (0, 1)) * sk[:, :, None]
+                cnt += sk
+            fill = (~known) & (cnt > 0)
+            if not fill.any():
+                break
+            rgb[fill] = acc[fill] / cnt[fill][:, None]
+            alpha[fill] = 1.0
+        src = Image.fromarray(
+            np.concatenate([np.clip(rgb, 0, 255), arr[:, :, 3:4]], axis=2).astype(np.uint8), 'RGBA')
+
+    a = np.asarray(src).astype(np.float32)
+    al = a[:, :, 3:4] / 255.0
+    pm = np.concatenate([a[:, :, :3] * al, a[:, :, 3:4]], axis=2).astype(np.uint8)
+    r = np.asarray(Image.fromarray(pm, 'RGBA').resize(size, Image.LANCZOS)).astype(np.float32)
+    ral = r[:, :, 3:4] / 255.0
+    out_rgb = np.where(ral > 0, r[:, :, :3] / np.maximum(ral, 1e-6), 0.0)
+    return Image.fromarray(
+        np.concatenate([np.clip(out_rgb, 0, 255), r[:, :, 3:4]], axis=2).astype(np.uint8), 'RGBA')
+
+
 for out_name, src_name, size in JOBS:
     src = os.path.join(SRC, src_name)
     if not os.path.exists(src):
         print('  [跳过] 源缺失 ' + src_name)
         continue
     im = Image.open(src).convert('RGBA')
-    im2 = im.resize(size, Image.LANCZOS) if size else im
+    im2 = resize_premultiplied(im, size) if size else im
     dst = os.path.join(DST, out_name)
     im2.save(dst)
     print('  %-20s <- %-26s %dx%d -> %dx%d' % (out_name, src_name, im.size[0], im.size[1], im2.size[0], im2.size[1]))
@@ -174,6 +219,22 @@ Remove-Item $tmp -Force
 Write-Host '== 修补中央 VU 黑区 ==' -ForegroundColor Cyan
 & $py (Join-Path $PSScriptRoot 'patch-bg-vu.py')
 if ($LASTEXITCODE -ne 0) { throw "底图修补失败（退出码 $LASTEXITCODE）" }
+
+# 修补后自检：黑区必须已被填充。
+# 之前出现过「脚本跑了但没生效」的情况（BOM 丢失导致解析失败、提前中断），
+# 结果带着黑块一路构建进插件，只能靠肉眼在 DAW 里才发现。
+$verify = @"
+import numpy as np
+from PIL import Image
+a = np.asarray(Image.open(r'$assetDir\bg.png').convert('RGB')).astype(float)
+print(int((a[150:345, 470:805].mean(axis=2) < 90).sum()))
+"@
+$vtmp = Join-Path $env:TEMP 'verify_bg.py'
+[System.IO.File]::WriteAllText($vtmp, $verify, (New-Object System.Text.UTF8Encoding($false)))
+$remain = (& $py $vtmp | Select-Object -Last 1).Trim()
+Remove-Item $vtmp -Force
+if ($remain -ne '0') { throw "底图修补未生效：搜索区内仍有 $remain 个暗像素（应为 0）" }
+Write-Host '  已确认黑区消除（剩余暗像素 0）' -ForegroundColor Green
 
 Write-Host ''
 Get-ChildItem $assetDir -File | ForEach-Object { "  {0,10:N0}  {1}" -f $_.Length, $_.Name }

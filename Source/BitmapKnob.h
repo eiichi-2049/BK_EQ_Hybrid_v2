@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // 注意：JUCE 的 CMake API 不生成 Projucer 风格的 JuceHeader.h，
 // 必须按需直接包含模块头文件。
@@ -67,7 +67,7 @@ private:
     int   contentBox;
     double sweepDegrees;
     int   indexLabel = -1;
-    bool  debugOverlay = true;
+    bool  debugOverlay = false;     // 对齐核对用的洋红框/青十字，默认关闭
 
     double value, minVal, maxVal;
     double dragStartValue = 0.0;

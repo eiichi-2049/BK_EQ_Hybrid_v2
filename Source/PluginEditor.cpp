@@ -1,4 +1,4 @@
-﻿#include "PluginEditor.h"
+#include "PluginEditor.h"
 #include "AssetLoader.h"
 #include "BuildInfo.h"
 
@@ -17,9 +17,10 @@ namespace
 
     // 素材内容盒（素材内可见部分，用于把图形精确铺满 rect）：
     //   fs_pultec.png        帧 160，可见 142  → 内容 142，91 帧
-    //   ssl_*.png            单张静态图，802x817 可见 800x815 → 内容 800
+    //   ssl_*.png            单张静态图 184x184，图形充满整幅 → 内容 184
+    //                        （生成时已预降采样，控件内不再做大幅缩放）
     constexpr int kPultecFrames = 91, kPultecContent = 142;
-    constexpr int kSslFrames    = 1,  kSslContent    = 800;
+    constexpr int kSslFrames    = 1,  kSslContent    = 184;
 
     // 左 Pultec 仍用旧 filmstrip：其指针 0→90 帧走了约一整圈，
     // 而旋钮面上 0–10 的刻度只占约 270°，因此靠角范围收敛到刻度跨度。
