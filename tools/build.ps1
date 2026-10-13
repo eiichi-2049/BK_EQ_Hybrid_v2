@@ -120,8 +120,16 @@ Write-Host "  CMake   : $cmake"
 Write-Host "  MSBuild : $msbuild"
 
 Write-Host '== 1/4 素材准备 ==' -ForegroundColor Cyan
-& (Join-Path $PSScriptRoot 'sync-assets.ps1')
-if ($LASTEXITCODE -ne 0 -and $null -ne $LASTEXITCODE) { throw '素材同步失败' }
+# 这里曾经调用 sync-assets.ps1，从已冻结的 v1（HISE 工程）复制旧贴图到 assets\。
+# 那在 v2 早期是必要的（当时直接复用 v1 素材），但 v2 现在有了自己的素材链路：
+#     tools\build-assets.ps1  →  tools\gen-assets.py  →  assets\
+# 两者并存会造成隐蔽的覆盖：构建时旧素材把刚生成的新素材盖掉，表现为
+# 「修补/换素材明明成功，构建后却还是旧的」。因此彻底移除该同步步骤。
+# v1 素材仅作历史存档，由 legacy\ 保存，不再参与构建。
+if (-not (Test-Path (Join-Path $root 'assets\bg.png'))) {
+    throw '缺少素材：assets\bg.png。请先运行 tools\build-assets.ps1 生成素材。'
+}
+Write-Host '  素材就绪（由 tools\build-assets.ps1 生成）'
 
 if ($Clean -and (Test-Path $buildDir)) {
     Write-Host '== 清理 build 目录 ==' -ForegroundColor Yellow
