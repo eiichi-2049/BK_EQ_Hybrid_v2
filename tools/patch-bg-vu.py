@@ -17,13 +17,14 @@
 """
 import os
 import numpy as np
+import argparse
+import os
+
+import numpy as np
 from PIL import Image
 
-ASSETS = r'E:\BK_EQ_Hybrid_v2\assets'
-BG = os.path.join(ASSETS, 'bg.png')
-
-# 先备份一次原图（只备份第一次）
-BACKUP = os.path.join(ASSETS, '_bg_original.png')
+# 默认素材目录（可用 --assets 覆盖）
+DEFAULT_ASSETS = r'E:\BK_EQ_Hybrid_v2\assets'
 
 # 黑区搜索范围（比实测略放宽，确保覆盖边缘的柔和过渡）
 SEARCH = dict(x0=470, x1=805, y0=150, y1=345)
@@ -35,14 +36,22 @@ PANEL_SAMPLES = [(500, 400), (770, 400), (500, 600), (770, 600)]
 
 
 def main():
-    if not os.path.exists(BG):
-        raise SystemExit(f'找不到 {BG}')
+    ap = argparse.ArgumentParser(description='Patch the VU placeholder area in bg.png')
+    ap.add_argument('--assets', default=DEFAULT_ASSETS, help='asset directory')
+    args = ap.parse_args()
 
-    if not os.path.exists(BACKUP):
-        Image.open(BG).save(BACKUP)
-        print(f'  已备份原图 -> {os.path.basename(BACKUP)}')
+    assets = args.assets
+    bg = os.path.join(assets, 'bg.png')
+    backup = os.path.join(assets, '_bg_original.png')
 
-    im = Image.open(BG).convert('RGB')
+    if not os.path.exists(bg):
+        raise SystemExit(f'找不到 {bg}')
+
+    if not os.path.exists(backup):
+        Image.open(bg).save(backup)
+        print(f'  已备份原图 -> {os.path.basename(backup)}')
+
+    im = Image.open(bg).convert('RGB')
     a = np.asarray(im).astype(np.float32)
     h, w = a.shape[:2]
 
@@ -107,14 +116,14 @@ def main():
                 col[m[:, 0]] = panel * (1 - alpha) + col[m[:, 0]] * alpha
 
     out = np.clip(a, 0, 255).astype(np.uint8)
-    Image.fromarray(out).save(BG)
+    Image.fromarray(out).save(bg)
 
     # --- 复核 ---------------------------------------------------------------
-    check = np.asarray(Image.open(BG).convert('RGB')).astype(np.float32)
+    check = np.asarray(Image.open(bg).convert('RGB')).astype(np.float32)
     sub2 = check[s['y0']:s['y1'], s['x0']:s['x1']]
     left = int((sub2.mean(axis=2) < DARK_MAX).sum())
     print(f'  修补后同一区域暗色像素 {left} 个（原 {n} 个）')
-    print(f'  已写回 {os.path.basename(BG)}')
+    print(f'  已写回 {os.path.basename(bg)}')
 
 
 if __name__ == '__main__':
