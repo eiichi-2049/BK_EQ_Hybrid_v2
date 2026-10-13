@@ -20,6 +20,9 @@ _layout_preview.png
 _frames.png
 _verify_layout.png
 _calib_*.png
+_vu_*.png
+_pred_*.png
+_grid_*.png
 
 # ---- 其它 ----
 _cmtest/
